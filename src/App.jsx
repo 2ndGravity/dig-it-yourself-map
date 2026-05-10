@@ -1127,7 +1127,7 @@ export default function GemMineMap() {
                 <div style={{ fontSize: "11px", color: "#374151", lineHeight: "1.5" }}>{selected.note}</div>
               </div>
             )}
-            {selected.url && (
+            {selected.url && !selected.url.includes("mindat.org") && !selected.url.includes("mgs.md.gov") && !selected.url.includes("blm.gov") && !selected.url.includes("nps.gov") && !selected.url.includes("fs.usda.gov") && !selected.url.includes("dnr.") && !selected.url.includes("wikipedia.org") && !selected.url.includes(".gov") && (
               <div style={{ gridColumn: "1 / -1", marginTop: "2px" }}>
                 <a href={selected.url} target="_blank" rel="noopener noreferrer"
                   style={{ display: "inline-block", fontSize: "10px", color: "#4b5563", border: "1px solid #6b7280", borderRadius: "4px", padding: "4px 10px", textDecoration: "none", letterSpacing: "1px", fontFamily: "inherit" }}>
