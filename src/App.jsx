@@ -751,7 +751,7 @@ export default function GemMineMap() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await window.storage.get("gem-visited-v4");
+        const r = await window.storage?.get("gem-visited-v4");
         if (r?.value) setVisited(new Set(JSON.parse(r.value)));
       } catch (e) {}
       setLoaded(true);
@@ -760,7 +760,7 @@ export default function GemMineMap() {
 
   useEffect(() => {
     if (!loaded) return;
-    window.storage.set("gem-visited-v4", JSON.stringify([...visited])).catch(() => {});
+    window.storage?.set("gem-visited-v4", JSON.stringify([...visited])).catch(() => {});
   }, [visited, loaded]);
 
   const toggleVisited = id => setVisited(prev => {
