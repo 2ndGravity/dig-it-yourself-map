@@ -751,7 +751,7 @@ export default function GemMineMap() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await window.storage?.get("gem-visited-v4");
+        const r = await window.storage.get("gem-visited-v4");
         if (r?.value) setVisited(new Set(JSON.parse(r.value)));
       } catch (e) {}
       setLoaded(true);
@@ -760,7 +760,7 @@ export default function GemMineMap() {
 
   useEffect(() => {
     if (!loaded) return;
-    window.storage?.set("gem-visited-v4", JSON.stringify([...visited])).catch(() => {});
+    window.storage.set("gem-visited-v4", JSON.stringify([...visited])).catch(() => {});
   }, [visited, loaded]);
 
   const toggleVisited = id => setVisited(prev => {
@@ -859,7 +859,7 @@ export default function GemMineMap() {
   });
 
   return (
-    <div style={{ fontFamily: "Courier New, monospace", background: "#ffffff", color: "#374151", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ fontFamily: "Courier New, monospace", background: "#ffffff", color: "#374151", height: "100vh", height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden", position: "fixed", inset: 0 }}>
 
       <div style={{ padding: "8px 14px", background: "#ffffff", borderBottom: "2px solid #6b7280", zIndex: 2000, position: "relative" }}>
 
@@ -867,7 +867,7 @@ export default function GemMineMap() {
           {/* Title */}
           <div style={{ flexShrink: 0, minWidth: 0 }}>
             <div style={{ fontSize: "clamp(10px, 2.5vw, 13px)", fontWeight: "bold", color: "#4b5563", letterSpacing: "2px", whiteSpace: "nowrap" }}>DIG IT YOURSELF</div>
-            <div style={{ fontSize: "8px", color: "#9ca3af", letterSpacing: "1px", whiteSpace: "nowrap", position: "absolute" }}>{MINES.length} SITES WORLDWIDE</div>
+            <div style={{ fontSize: "8px", color: "#9ca3af", letterSpacing: "1px", whiteSpace: "nowrap", position: "absolute" }}>WHERE EVERY PATH HIDES A GEM</div>
           </div>
           <div style={{ flex: 1, minWidth: 0 }} />
 
