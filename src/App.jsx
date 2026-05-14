@@ -224,7 +224,7 @@ const MINES = [
 { id:"shop-ri-east-coast", name:"East Coast Gems & Minerals", state:"RI", lat:41.8240, lng:-71.4128, address:"Providence, RI 02903", gems:["Minerals","Crystals","Fossils","New England Specimens"], pricing:"Varies", note:"Rhode Island's go-to geology and mineral shop in Providence. New England minerals, crystals and fossils. Good source for regional Rhode Island and Connecticut specimen information.", url:"https://eastcoastgemsandminerals.com" },
 { id:"shop-de-gemstone", name:"The Gem Gallery", state:"DE", lat:39.7447, lng:-75.5484, address:"Wilmington, DE 19801", gems:["Minerals","Gems","Crystals","Fossils"], pricing:"Varies", note:"Delaware's primary dedicated gem and mineral shop. Wilmington-area geology specimens, crystals and minerals. Delaware has limited in-state rockhounding but this shop is well-stocked with Mid-Atlantic and international specimens.", url:"https://thegemgallery.com" },
 
-{ id:"md-mineral-hill", name:"Mineral Hill (Liberty Copper Mine Dumps)", state:"MD", public:true, lat:39.4500, lng:-77.0167, address:"Mineral Hill Rd, Finksburg, Carroll County, MD 21048", gems:["Pyrite","Malachite","Chalcopyrite","Bornite","Actinolite","Magnetite","Carrollite"], pricing:"Free - public access to mine dumps", note:"Historic copper mine dumps in Carroll County open to the public. About 0.5 miles from the parking area to the main collecting site. Find massive pyrite and occasional octahedral crystals, malachite crusts, bornite, actinolite crystals, and large chunks of magnetite. This is the type locality for carrollite (named for Carroll County) - a rare cobalt-copper sulfide. Micro crystals possible but finding specimen-grade material requires patience. Beware of rattlesnakes in summer - best visited spring or fall.", url:"https://www.mindat.org/loc-3580.html" },
+{ id:"md-mineral-hill", name:"Mineral Hill (Liberty Copper Mine Dumps)", state:"MD", public:true, lat:39.4500, lng:-77.0167, address:"Mineral Hill Rd, Finksburg, Carroll County, MD 21048", gems:["Pyrite","Malachite","Chalcopyrite","Bornite","Actinolite","Magnetite","Carrollite"], pricing:"Free - public access to mine dumps", note:"Historic copper mine dumps in Carroll County open to the public. About a 1-mile hike from the parking area to the main collecting site. Find massive pyrite -- both cubic crystals and octahedral forms -- as well as malachite crusts, bornite, chalcopyrite, actinolite crystals, and large chunks of magnetite. Pyrite is the star find here, occurring in impressive clusters and individual crystals. This is also the type locality for carrollite (named for Carroll County) -- a rare cobalt-copper sulfide worth keeping an eye out for. Micro crystals possible but finding specimen-grade material requires patience. Beware of rattlesnakes in summer -- best visited spring or fall.", url:"https://www.mindat.org/loc-3580.html" },
 { id:"md-soldiers-delight", name:"Soldiers Delight Natural Environment Area", state:"MD", lat:39.4198, lng:-76.8578, address:"5765 Deer Park Rd, Owings Mills, MD 21117", gems:["Chromite","Magnetite","Serpentine","Deweylite","Williamsite"], pricing:"Free (state-managed); $3 parking fee", note:"One of the finest serpentine barrens in the eastern US. Maryland was the first chromite producer in the US (1800s). Surface collect chromite, magnetite and deweylite in the serpentinite. Also look for williamsite (gem-quality green serpentine) in veins. Collecting is restricted - check with MD Dept of Natural Resources before removing material. Open sunrise to sunset.", url:"https://dnr.maryland.gov/publiclands/Pages/central/soldiersdelight.aspx" },
 { id:"md-calvert-cliffs-fossil", name:"Calvert Cliffs State Park (Miocene Fossils)", state:"MD", type:"fossil", public:true, lat:38.4031, lng:-76.4380, address:"10540 H G Trueman Rd, Lusby, MD 20657", gems:["Shark Teeth","Whale Bones","Ray Plates","Miocene Fossils"], pricing:"Free - state park", note:"35-foot Miocene-age cliffs along the Chesapeake Bay constantly erode to expose 15-million-year-old marine fossils. Collect shark teeth (sand tiger, mako, snaggletooth, cow shark), whale and dolphin bones, ray plates and mollusks on the beach at the base of the cliffs. Megalodon teeth are rare but present. Best after storms when fresh material erodes. 1.8-mile hike to the beach. Bring a mesh screen to sift gravel at the waterline.", url:"https://dnr.maryland.gov/publiclands/Pages/southern/calvertcliffs.aspx" },
 { id:"md-state-line-pits", name:"State Line Chromite Pits (Williamsite Serpentine)", state:"MD", public:true, lat:39.7267, lng:-76.0667, address:"State Line, Cecil County, MD / Chester County, PA border", gems:["Williamsite","Serpentine","Chromite","Brucite","Magnetite"], pricing:"Free - public access to old mine dumps", note:"One of the most important mineral localities on the East Coast. The State Line pits straddle the Maryland-Pennsylvania border in Cecil/Chester counties. Famous for gem-quality williamsite - a vivid apple-green variety of serpentine used for cabochons. Also find chromite, brucite, magnetite and antigorite. Search through old tailing piles in the surrounding brush - the more overgrown piles tend to be less picked-over. Best to join a local mineral club trip for access guidance.", url:"https://www.mindat.org/loc-3591.html" },
@@ -466,34 +466,44 @@ function getCategoryColor(name) {
 }
 
 function injectIconStyles() {
-  if (document.getElementById("gem-icon-styles")) return;
-  const style = document.createElement("style");
-  style.id = "gem-icon-styles";
-  // Use unicode escapes in CSS content - safe because CSS parsing handles them differently
-  style.textContent = [
-    ".gem-icon-fossil { border-radius: 4px !important; }",
-    ".gem-icon-fossil .gem-icon-inner::before { content: '\\1F9B4'; }",
-    ".gem-icon-dig .gem-icon-inner::before { content: '\\26CF'; }",
-    ".gem-icon-visited .gem-icon-inner::before { content: '\\2714'; }",
-    ".gem-icon-shop .gem-icon-inner::before { content: '\\1F6D2'; }",
-  ].join(" ");
-  document.head.appendChild(style);
+  // No-op: icons are now rendered as inline SVG in makeIcon
 }
 
+function svgIcon(paths, strokeColor) {
+  const c = strokeColor || "#4b5563";
+  return "<svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='" + c + "' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" + paths + "</svg>";
+}
+
+// Exact Lucide paths
+const ICON_PICKAXE = svgIcon(
+  "<path d='m14 13-8.381 8.38a1 1 0 0 1-3.001-3L11 9.999'/>" +
+  "<path d='M15.973 4.027A13 13 0 0 0 5.902 2.373c-1.398.342-1.092 2.158.277 2.601a19.9 19.9 0 0 1 5.822 3.024'/>" +
+  "<path d='M16.001 11.999a19.9 19.9 0 0 1 3.024 5.824c.444 1.369 2.26 1.676 2.603.278A13 13 0 0 0 20 8.069'/>" +
+  "<path d='M18.352 3.352a1.205 1.205 0 0 0-1.704 0l-5.296 5.296a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l5.296-5.296a1.205 1.205 0 0 0 0-1.704z'/>"
+);
+const ICON_BONE = svgIcon(
+  "<path d='M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z'/>"
+);
+const ICON_CHECK = svgIcon("<polyline points='20 6 9 17 4 12'/>", "#ffffff");
+const ICON_BAG = svgIcon(
+  "<path d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z'/>" +
+  "<line x1='3' y1='6' x2='21' y2='6'/>" +
+  "<path d='M16 10a4 4 0 0 1-8 0'/>"
+);
+const ICON_TREES = svgIcon(
+  "<path d='M10 10 4 18h12L10 10z'/>" +
+  "<path d='M14 6l2 4h-4l2-4z'/>" +
+  "<line x1='10' y1='18' x2='10' y2='22'/>"
+);
+
 function makeIcon(L, isVisited, isFossil, isPublic, isShop) {
-  injectIconStyles();
   const bg = isVisited ? "#6b7280" : (isPublic ? "#e5e7eb" : "#ffffff");
   const border = isVisited ? "#374151" : (isPublic ? "#9ca3af" : "#4b5563");
-  const typeClass = isVisited ? "gem-icon-visited" : isShop ? "gem-icon-shop" : (isFossil ? "gem-icon-fossil" : "gem-icon-dig");
-  if (isShop && !isVisited) {
-    return L.divIcon({
-      html: "<svg width='24' height='24' viewBox='0 0 24 24' style='cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))'><polygon points='12,2 22,22 2,22' fill='#ffffff' stroke='#4b5563' stroke-width='2'/><text x='12' y='19' text-anchor='middle' font-size='10'>\uD83D\uDED2</text></svg>",
-      className: "", iconSize: [24, 24], iconAnchor: [12, 12]
-    });
-  }
-  const shape = isFossil && !isVisited ? "4px" : "50%";
+  const shape = isFossil && !isVisited ? "4px" : isShop && !isVisited ? "3px" : "50%";
+  const icon = isVisited ? ICON_CHECK : isShop ? ICON_BAG : isFossil ? ICON_BONE : isPublic ? ICON_TREES : ICON_PICKAXE;
+  const typeClass = isVisited ? "gem-icon-visited" : isShop ? "gem-icon-shop" : isFossil ? "gem-icon-fossil" : "gem-icon-dig";
   return L.divIcon({
-    html: "<div class=\"gem-icon-inner\" style=\"width:24px;height:24px;border-radius:" + shape + ";background:" + bg + ";border:2px solid " + border + ";display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer;\"></div>",
+    html: "<div style='width:24px;height:24px;border-radius:" + shape + ";background:" + bg + ";border:2px solid " + border + ";display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer;'>" + icon + "</div>",
     className: typeClass, iconSize: [24, 24], iconAnchor: [12, 12]
   });
 }
@@ -531,6 +541,12 @@ function MapComponent({ mines, visited, onMineClick, zoomState, region }) {
       const map = L.map(mapRef.current, { center: [39.5, -98.35], zoom: 4 });
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "(c) OpenStreetMap", maxZoom: 18 }).addTo(map);
       leafletMapRef.current = map;
+
+      // Ghost canvas lives inside mapPane so it transforms with the map during pan
+      const ghostCanvas = document.createElement("canvas");
+      ghostCanvas.style.cssText = "position:absolute;top:0;left:0;pointer-events:none;z-index:200;";
+      map.getPanes().mapPane.appendChild(ghostCanvas);
+
       mines.forEach(mine => {
         const marker = L.marker([mine.lat, mine.lng], { icon: makeIcon(L, visitedRef.current.has(mine.id), mine.type === "fossil", mine.public === true, mine.type === "shop") });
         marker.addTo(map);
@@ -549,6 +565,7 @@ function MapComponent({ mines, visited, onMineClick, zoomState, region }) {
         const maxLat = bounds.getNorth() + buf;
         const minLng = bounds.getWest() - buf * 1.5;
         const maxLng = bounds.getEast() + buf * 1.5;
+        const isDragging = map.dragging && map.dragging._draggable && map.dragging._draggable._moving;
 
         const ids = Object.keys(markersRef.current);
         ids.forEach((id, i) => {
@@ -559,25 +576,76 @@ function MapComponent({ mines, visited, onMineClick, zoomState, region }) {
           if (!el) return;
 
           const isInternational = !!mine.country;
+          if (isInternational) {
+            el.style.display = "";
+            el.style.opacity = "1";
+            el.style.pointerEvents = "";
+            return;
+          }
 
-          // International sites: always show
-          if (isInternational) { el.style.display = ""; return; }
-
-          // US sites: cull by viewport
           const inView = mine.lat >= minLat && mine.lat <= maxLat &&
                          mine.lng >= minLng && mine.lng <= maxLng;
           if (!inView) { el.style.display = "none"; return; }
 
-          // US sites: thin by zoom level
+          // During drag skip thinning — let all in-view markers show
+          if (isDragging) { el.style.display = ""; el.style.pointerEvents = ""; return; }
+
           let show = true;
           if (zoom < 3) show = (i % 8 === 0);
           else if (zoom < 4) show = (i % 4 === 0);
           else if (zoom < 5) show = (i % 2 === 0);
+
           el.style.display = show ? "" : "none";
+          el.style.pointerEvents = show ? "" : "none";
         });
       };
-      map.on("zoom zoomend move moveend", updateVisibility);
+      const redraw = () => {
+        const zoom = map.getZoom();
+        const pad = 256;
+        const size = map.getSize();
+        // Extend canvas bounds generously so dots don't clip at edges during pan
+        ghostCanvas.width = size.x + pad * 2;
+        ghostCanvas.height = size.y + pad * 2;
+        ghostCanvas.style.left = -pad + "px";
+        ghostCanvas.style.top = -pad + "px";
+        const ctx = ghostCanvas.getContext("2d");
+        ctx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
+        if (zoom >= 5) return;
+
+        // Use same coordinate system as Leaflet markers (containerPoint)
+        const ids = Object.keys(minesRef.current);
+        ids.forEach((id, i) => {
+          const mine = minesRef.current[id];
+          if (!mine || mine.country) return;
+
+          let show = true;
+          if (zoom < 3) show = (i % 8 === 0);
+          else if (zoom < 4) show = (i % 4 === 0);
+          else if (zoom < 5) show = (i % 2 === 0);
+          if (show) return;
+
+          const pt = map.latLngToLayerPoint([mine.lat, mine.lng]);
+          const x = pt.x + pad;
+          const y = pt.y + pad;
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255,255,255,0.7)";
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(75,85,99,0.5)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        });
+      };
+      // Zoom thinning: only on zoomend (zoom level change)
+      // Pan culling: on moveend (viewport change)
+      // Canvas dots: on every move frame (live during drag)
+      map.on("move", redraw);
+      map.on("moveend", () => { updateVisibility(); redraw(); });
+      map.on("zoomend", () => { updateVisibility(); redraw(); });
       updateVisibility();
+      redraw();
     });
   }, []);
 
@@ -725,6 +793,168 @@ function MineralMapComponent({ mines, region }) {
 }
 
 
+// ── MAPLIBRE MAP COMPONENT ─────────────────────────────────────────────────
+// Drop-in replacement for MapComponent using MapLibre GL for smooth rendering
+// Toggle between this and Leaflet using the useMapLibre flag in App state
+
+function loadMapLibreOnce() {
+  return new Promise(resolve => {
+    if (window.maplibregl) return resolve(window.maplibregl);
+    const loadScript = src => new Promise(r => {
+      const s = document.createElement("script"); s.src = src; s.onload = r; document.head.appendChild(s);
+    });
+    const loadCss = href => { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); };
+    loadCss("https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css");
+    loadScript("https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js").then(() => resolve(window.maplibregl));
+  });
+}
+
+function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
+  const mapRef = useRef(null);
+  const mlMapRef = useRef(null);
+  const minesRef = useRef({});
+  const visitedRef = useRef(visited);
+  visitedRef.current = visited;
+
+  // Build mines lookup
+  mines.forEach(m => { minesRef.current[m.id] = m; });
+
+  // Zoom to state/region
+  useEffect(() => {
+    if (!mlMapRef.current) return;
+    const map = mlMapRef.current;
+    if (region === "WLD") map.flyTo({ center: [0, 20], zoom: 1 });
+    else map.flyTo({ center: [-98.35, 39.5], zoom: 4 });
+  }, [region]);
+
+  useEffect(() => {
+    if (!mlMapRef.current || !zoomState) return;
+    const map = mlMapRef.current;
+    if (zoomState === "ALL") {
+      if (region === "WLD") map.flyTo({ center: [0, 20], zoom: 1 });
+      else map.flyTo({ center: [-98.35, 39.5], zoom: 4 });
+    } else if (STATE_BOUNDS[zoomState]) {
+      const [latMin, latMax, lngMin, lngMax] = STATE_BOUNDS[zoomState];
+      map.fitBounds([[lngMin, latMin], [lngMax, latMax]], { padding: 30 });
+    }
+  }, [zoomState]);
+
+  // Init map
+  useEffect(() => {
+    if (mlMapRef.current) return;
+    loadMapLibreOnce().then(ml => {
+      const map = new ml.Map({
+        container: mapRef.current,
+        style: {
+          version: 8,
+          glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+          sources: {
+            osm: {
+              type: "raster",
+              tiles: ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              attribution: "(c) OpenStreetMap contributors",
+              maxzoom: 19
+            }
+          },
+          layers: [{ id: "osm-tiles", type: "raster", source: "osm", minzoom: 0, maxzoom: 19 }]
+        },
+        center: [-98.35, 39.5],
+        zoom: 4,
+        attributionControl: false,
+      });
+      map.addControl(new ml.AttributionControl({ compact: true }));
+      mlMapRef.current = map;
+
+      map.on("load", () => {
+        // Add GeoJSON source for markers
+        map.addSource("mines", {
+          type: "geojson",
+          data: buildGeoJSON(mines, visitedRef.current),
+          cluster: true,
+          clusterMaxZoom: 6,
+          clusterRadius: 40,
+        });
+
+        // Cluster circles
+        map.addLayer({ id: "clusters", type: "circle", source: "mines", filter: ["has", "point_count"],
+          paint: { "circle-color": "#4b5563", "circle-radius": 16, "circle-stroke-width": 2, "circle-stroke-color": "#ffffff" }
+        });
+        map.addLayer({ id: "cluster-count", type: "symbol", source: "mines", filter: ["has", "point_count"],
+          layout: { "text-field": "{point_count_abbreviated}", "text-size": 11, "text-font": ["Open Sans Regular"] },
+          paint: { "text-color": "#ffffff" }
+        });
+
+        // Individual markers
+        map.addLayer({ id: "mines-visited", type: "circle", source: "mines",
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], true]],
+          paint: { "circle-color": "#6b7280", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#374151" }
+        });
+        map.addLayer({ id: "mines-public", type: "circle", source: "mines",
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isPublic"], true]],
+          paint: { "circle-color": "#e5e7eb", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#9ca3af" }
+        });
+        map.addLayer({ id: "mines-fossil", type: "circle", source: "mines",
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isFossil"], true]],
+          paint: { "circle-color": "#ffffff", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#4b5563" }
+        });
+        map.addLayer({ id: "mines-default", type: "circle", source: "mines",
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], false]],
+          paint: { "circle-color": "#ffffff", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#4b5563" }
+        });
+
+        // Click handlers
+        ["mines-visited","mines-public","mines-fossil","mines-default"].forEach(layer => {
+          map.on("click", layer, e => {
+            const id = e.features[0].properties.id;
+            const mine = minesRef.current[id];
+            if (mine) onMineClick(mine);
+          });
+          map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
+          map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
+        });
+
+        map.on("click", "clusters", e => {
+          const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+          const clusterId = features[0].properties.cluster_id;
+          map.getSource("mines").getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err) return;
+            map.easeTo({ center: features[0].geometry.coordinates, zoom });
+          });
+        });
+      });
+    });
+  }, []);
+
+  // Update markers when mines or visited changes
+  useEffect(() => {
+    if (!mlMapRef.current || !mlMapRef.current.getSource("mines")) return;
+    mlMapRef.current.getSource("mines").setData(buildGeoJSON(mines, visited));
+  }, [mines, visited]);
+
+  return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
+}
+
+function buildGeoJSON(mines, visited) {
+  return {
+    type: "FeatureCollection",
+    features: mines.map(m => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [m.lng, m.lat] },
+      properties: {
+        id: m.id,
+        name: m.name,
+        isVisited: visited.has(m.id),
+        isFossil: m.type === "fossil",
+        isPublic: !!m.public,
+        isShop: m.type === "shop",
+      }
+    }))
+  };
+}
+
 export default function GemMineMap() {
   const [viewMode, setViewMode] = useState("dig");
   const [region, setRegion] = useState("US");
@@ -744,23 +974,24 @@ export default function GemMineMap() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showViews, setShowViews] = useState(false);
+  const [useMapLibre, setUseMapLibre] = useState(true);
   const [nearbyMode, setNearbyMode] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const r = await window.storage?.get("gem-visited-v4");
-        if (r?.value) setVisited(new Set(JSON.parse(r.value)));
-      } catch (e) {}
-      setLoaded(true);
-    })();
+    try {
+      const saved = localStorage.getItem("gem-visited-v4");
+      if (saved) setVisited(new Set(JSON.parse(saved)));
+    } catch (e) {}
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
     if (!loaded) return;
-    window.storage?.set("gem-visited-v4", JSON.stringify([...visited])).catch(() => {});
+    try {
+      localStorage.setItem("gem-visited-v4", JSON.stringify([...visited]));
+    } catch (e) {}
   }, [visited, loaded]);
 
   const toggleVisited = id => setVisited(prev => {
@@ -930,6 +1161,7 @@ export default function GemMineMap() {
                   { label: "Mineral Map", desc: "Geological zone overlays", action: () => { setViewMode("mineral"); setShowViews(false); }, active: viewMode === "mineral" },
                   { label: "Site List", desc: "Toggle sidebar list", action: () => { setSidebarOpen(o => !o); }, active: sidebarOpen },
                   { label: "Near Me", desc: nearbyMode ? "On - sorted by distance" : "Sort by your location", action: handleNearby, active: nearbyMode },
+                  { label: useMapLibre ? "Switch to Leaflet" : "Switch to MapLibre", desc: useMapLibre ? "Fallback renderer" : "Smooth GL renderer", action: () => { setUseMapLibre(o => !o); setShowViews(false); }, active: false },
                   ...(visited.size > 0 ? [{ label: "Export Visited", desc: "Download as CSV", action: () => { exportVisited(); setShowViews(false); }, active: false }] : []),
                   { label: "Blog", desc: "Rockhounding stories & guides", action: () => { window.open("https://dig-it-yourself-blog.netlify.app", "_blank"); setShowViews(false); }, active: false },
                 ].map(({ label, desc, action, active }) => (
@@ -1027,19 +1259,22 @@ export default function GemMineMap() {
         ) : (
           <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             <div style={{ flex: 1, position: "relative" }} onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
-              <MapComponent mines={filteredAndSorted} visited={visited} onMineClick={setSelected} zoomState={searchMode === "state" ? stateFilter : "ALL"} region={region} />
+              {useMapLibre
+                ? <MapLibreComponent mines={filteredAndSorted} visited={visited} onMineClick={setSelected} zoomState={searchMode === "state" ? stateFilter : "ALL"} region={region} />
+                : <MapComponent mines={filteredAndSorted} visited={visited} onMineClick={setSelected} zoomState={searchMode === "state" ? stateFilter : "ALL"} region={region} />
+              }
               <div style={{ position: "absolute", bottom: 22, left: 10, background: "rgba(255,255,255,0.95)", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "10px", zIndex: 999, overflow: "hidden" }}>
                 <div onClick={() => setLegendOpen(o => !o)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 10px", cursor: "pointer", borderBottom: legendOpen ? "1px solid #e5e7eb" : "none" }}>
                   <span style={{ color: "#4b5563", fontWeight: "bold" }}>LEGEND</span>
-                  <span style={{ color: "#9ca3af", marginLeft: "12px", fontSize: "11px" }}>{legendOpen ? "▲" : "▼"}</span>
+                  <span style={{ color: "#9ca3af", marginLeft: "12px" }}>{legendOpen ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg> : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>
                 </div>
                 {legendOpen && (
                   <div style={{ padding: "5px 10px 7px" }}>
                     {[
-                      { key: "dig", icon: <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#ffffff", border: "2px solid #4b5563", flexShrink: 0 }} />, label: "Fee dig" },
-                      { key: "publicLand", icon: <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#e5e7eb", border: "2px solid #9ca3af", flexShrink: 0 }} />, label: "Public land" },
-                      { key: "fossil", icon: <div style={{ width: 12, height: 12, borderRadius: "2px", background: "#ffffff", border: "2px solid #4b5563", flexShrink: 0 }} />, label: "Fossil site" },
-                      { key: "shop", icon: <svg width="14" height="12" viewBox="0 0 14 12" style={{ flexShrink: 0 }}><polygon points="7,1 13,11 1,11" fill="#ffffff" stroke="#4b5563" strokeWidth="1.5"/></svg>, label: "Shop/Workshop" },
+                      { key: "dig", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3L11 9.999"/><path d="M15.973 4.027A13 13 0 0 0 5.902 2.373c-1.398.342-1.092 2.158.277 2.601a19.9 19.9 0 0 1 5.822 3.024"/><path d="M16.001 11.999a19.9 19.9 0 0 1 3.024 5.824c.444 1.369 2.26 1.676 2.603.278A13 13 0 0 0 20 8.069"/><path d="M18.352 3.352a1.205 1.205 0 0 0-1.704 0l-5.296 5.296a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l5.296-5.296a1.205 1.205 0 0 0 0-1.704z"/></svg>, label: "Fee dig" },
+                      { key: "publicLand", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10 10 4 18h12L10 10z"/><path d="M14 6l2 4h-4l2-4z"/><line x1="10" y1="18" x2="10" y2="22"/></svg>, label: "Public land" },
+                      { key: "fossil", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/></svg>, label: "Fossil site" },
+                      { key: "shop", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>, label: "Shop/Workshop" },
                     ].map(({ key, icon, label }) => (
                       <div key={key} onClick={() => setTypeFilters(f => ({ ...f, [key]: !f[key] }))}
                         style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "3px", cursor: "pointer", opacity: typeFilters[key] ? 1 : 0.35, userSelect: "none" }}>
@@ -1048,7 +1283,7 @@ export default function GemMineMap() {
                       </div>
                     ))}
                     <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "1px" }}>
-                      <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#6b7280", border: "2px solid #374151", flexShrink: 0 }} />
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
                       <span>Visited</span>
                     </div>
                   </div>
@@ -1072,7 +1307,7 @@ export default function GemMineMap() {
                     onMouseLeave={e => e.currentTarget.style.background = selected?.id === mine.id ? "#f9fafb" : "transparent"}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div style={{ fontSize: "11px", fontWeight: "bold", color: "#4b5563", flex: 1, lineHeight: "1.3" }}>{mine.name}</div>
-                      {visited.has(mine.id) && <span style={{ fontSize: "10px", marginLeft: "4px", color: "#6b7280", flexShrink: 0 }}>{"\u2714"}</span>}
+                      {visited.has(mine.id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: 4 }}><polyline points="20 6 9 17 4 12"/></svg>}
                     </div>
                     <div style={{ fontSize: "9px", color: "#9ca3af", marginTop: "1px" }}>{mine.country ? mine.country : (STATE_NAMES[mine.state] || mine.state)}</div>
                     <div style={{ fontSize: "9px", color: "#6b7280", marginTop: "2px", lineHeight: "1.3" }}>{mine.gems.slice(0, 3).join(" \u00b7 ")}{mine.gems.length > 3 ? " +" + (mine.gems.length - 3) : ""}</div>
