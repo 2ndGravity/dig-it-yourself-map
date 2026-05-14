@@ -874,8 +874,8 @@ function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
           type: "geojson",
           data: buildGeoJSON(mines, visitedRef.current),
           cluster: true,
-          clusterMaxZoom: 6,
-          clusterRadius: 40,
+          clusterMaxZoom: 3,
+          clusterRadius: 50,
         });
 
         // Cluster circles
@@ -887,26 +887,30 @@ function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
           paint: { "text-color": "#ffffff" }
         });
 
-        // Individual markers
+        // Individual markers by type - color coded
         map.addLayer({ id: "mines-visited", type: "circle", source: "mines",
           filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], true]],
-          paint: { "circle-color": "#6b7280", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#374151" }
+          paint: { "circle-color": "#6b7280", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#374151" }
         });
-        map.addLayer({ id: "mines-public", type: "circle", source: "mines",
-          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isPublic"], true]],
-          paint: { "circle-color": "#e5e7eb", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#9ca3af" }
+        map.addLayer({ id: "mines-shop", type: "circle", source: "mines",
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], true]],
+          paint: { "circle-color": "#f59e0b", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#92400e" }
         });
         map.addLayer({ id: "mines-fossil", type: "circle", source: "mines",
           filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isFossil"], true]],
-          paint: { "circle-color": "#ffffff", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#4b5563" }
+          paint: { "circle-color": "#8b5cf6", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#5b21b6" }
+        });
+        map.addLayer({ id: "mines-public", type: "circle", source: "mines",
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], true]],
+          paint: { "circle-color": "#10b981", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#065f46" }
         });
         map.addLayer({ id: "mines-default", type: "circle", source: "mines",
-          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], false]],
-          paint: { "circle-color": "#ffffff", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#4b5563" }
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], false]],
+          paint: { "circle-color": "#3b82f6", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#1e3a8a" }
         });
 
         // Click handlers
-        ["mines-visited","mines-public","mines-fossil","mines-default"].forEach(layer => {
+        ["mines-visited","mines-shop","mines-public","mines-fossil","mines-default"].forEach(layer => {
           map.on("click", layer, e => {
             const id = e.features[0].properties.id;
             const mine = minesRef.current[id];
@@ -974,7 +978,12 @@ export default function GemMineMap() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showViews, setShowViews] = useState(false);
-  const [useMapLibre, setUseMapLibre] = useState(true);
+  const [useMapLibre, setUseMapLibre] = useState(false);
+  const [tripMode, setTripMode] = useState(false);
+  const [tripSites, setTripSites] = useState([]);
+  const tripModeRef = useRef(false);
+  useEffect(() => { tripModeRef.current = tripMode; }, [tripMode]);
+  const [lastAdded, setLastAdded] = useState(null);
   const [nearbyMode, setNearbyMode] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
@@ -1030,6 +1039,17 @@ export default function GemMineMap() {
     }
     return true;
   });
+
+  const handleMineClick = mine => {
+    if (tripModeRef.current) {
+      const isRemoving = tripSites.find(s => s.id === mine.id);
+      setTripSites(prev => isRemoving ? prev.filter(s => s.id !== mine.id) : [...prev, mine]);
+      setLastAdded({ name: mine.name, removed: !!isRemoving });
+      setTimeout(() => setLastAdded(null), 2000);
+    } else {
+      setSelected(mine);
+    }
+  };
 
   const haversine = (lat1, lng1, lat2, lng2) => {
     const R = 3958.8; // miles
@@ -1160,6 +1180,7 @@ export default function GemMineMap() {
                   { label: "Dig Map", desc: "Fee digs, public land, fossils", action: () => { setViewMode("dig"); setShowViews(false); }, active: viewMode === "dig" },
                   { label: "Mineral Map", desc: "Geological zone overlays", action: () => { setViewMode("mineral"); setShowViews(false); }, active: viewMode === "mineral" },
                   { label: "Site List", desc: "Toggle sidebar list", action: () => { setSidebarOpen(o => !o); }, active: sidebarOpen },
+                  { label: "Trip Planner", desc: tripMode ? "Click sites to remove them" : "Click sites to add to a trip", action: () => { setTripMode(o => !o); setSelected(null); setShowViews(false); }, active: tripMode },
                   { label: "Near Me", desc: nearbyMode ? "On - sorted by distance" : "Sort by your location", action: handleNearby, active: nearbyMode },
                   { label: useMapLibre ? "Switch to Leaflet" : "Switch to MapLibre", desc: useMapLibre ? "Fallback renderer" : "Smooth GL renderer", action: () => { setUseMapLibre(o => !o); setShowViews(false); }, active: false },
                   ...(visited.size > 0 ? [{ label: "Export Visited", desc: "Download as CSV", action: () => { exportVisited(); setShowViews(false); }, active: false }] : []),
@@ -1260,9 +1281,65 @@ export default function GemMineMap() {
           <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             <div style={{ flex: 1, position: "relative" }} onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
               {useMapLibre
-                ? <MapLibreComponent mines={filteredAndSorted} visited={visited} onMineClick={setSelected} zoomState={searchMode === "state" ? stateFilter : "ALL"} region={region} />
-                : <MapComponent mines={filteredAndSorted} visited={visited} onMineClick={setSelected} zoomState={searchMode === "state" ? stateFilter : "ALL"} region={region} />
+                ? <MapLibreComponent mines={filteredAndSorted} visited={visited} onMineClick={handleMineClick} zoomState={searchMode === "state" ? stateFilter : "ALL"} region={region} />
+                : <MapComponent mines={filteredAndSorted} visited={visited} onMineClick={handleMineClick} zoomState={searchMode === "state" ? stateFilter : "ALL"} region={region} />
               }
+
+              {/* Trip Mode Banner */}
+              {tripMode && (
+                <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", zIndex: 1100, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, pointerEvents: "none" }}>
+                  <div style={{ background: "#4b5563", color: "#ffffff", borderRadius: "20px", padding: "6px 16px", fontSize: "10px", letterSpacing: "1px", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                    TRIP PLANNER — Tap sites to add or remove
+                  </div>
+                  {lastAdded && (
+                    <div style={{ background: lastAdded.removed ? "#ef4444" : "#10b981", color: "#ffffff", borderRadius: "20px", padding: "5px 14px", fontSize: "11px", fontWeight: "bold", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.2)", transition: "opacity 0.3s" }}>
+                      {lastAdded.removed ? "Removed: " : "Added: "}{lastAdded.name}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Trip Panel */}
+              {tripMode && (
+                <div style={{ position: "absolute", bottom: 16, right: 10, zIndex: 1100, background: "rgba(255,255,255,0.97)", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "10px", width: 220, maxHeight: "60vh", display: "flex", flexDirection: "column", boxShadow: "0 2px 12px rgba(0,0,0,0.15)" }}>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: "bold", color: "#4b5563", letterSpacing: "1px" }}>YOUR TRIP</span>
+                    <span style={{ color: "#9ca3af" }}>{tripSites.length} stop{tripSites.length !== 1 ? "s" : ""}</span>
+                  </div>
+                  <div style={{ flex: 1, overflowY: "auto" }}>
+                    {tripSites.length === 0 && (
+                      <div style={{ padding: "14px 10px", color: "#9ca3af", textAlign: "center", lineHeight: 1.5 }}>Tap any site on the map to add it to your trip</div>
+                    )}
+                    {tripSites.map((mine, i) => (
+                      <div key={mine.id} style={{ padding: "8px 10px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "flex-start", gap: 6 }}>
+                        <span style={{ color: "#9ca3af", flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: "bold", color: "#374151", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mine.name}</div>
+                          <div style={{ color: "#9ca3af", fontSize: "9px", marginTop: 1 }}>{mine.state || mine.country}</div>
+                          <div style={{ color: "#6b7280", fontSize: "9px", marginTop: 1 }}>{mine.gems.slice(0, 2).join(" · ")}</div>
+                        </div>
+                        <button onClick={() => setTripSites(prev => prev.filter(s => s.id !== mine.id))}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "14px", lineHeight: 1, padding: "0 2px", flexShrink: 0 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  {tripSites.length > 0 && (
+                    <div style={{ padding: "8px 10px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <button onClick={() => {
+                        const stops = tripSites.map(m => encodeURIComponent(m.address || m.name)).join("/");
+                        window.open("https://www.google.com/maps/dir/" + stops, "_blank");
+                      }} style={{ padding: "7px", background: "#4b5563", color: "#ffffff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontFamily: "inherit", letterSpacing: "1px", textTransform: "none" }}>
+                        Get Directions →
+                      </button>
+                      <button onClick={() => setTripSites([])}
+                        style={{ padding: "5px", background: "#ffffff", color: "#6b7280", border: "1px solid #d1d5db", borderRadius: "4px", cursor: "pointer", fontSize: "10px", fontFamily: "inherit", textTransform: "none" }}>
+                        Clear Trip
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ position: "absolute", bottom: 22, left: 10, background: "rgba(255,255,255,0.95)", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "10px", zIndex: 999, overflow: "hidden" }}>
                 <div onClick={() => setLegendOpen(o => !o)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 10px", cursor: "pointer", borderBottom: legendOpen ? "1px solid #e5e7eb" : "none" }}>
                   <span style={{ color: "#4b5563", fontWeight: "bold" }}>LEGEND</span>
@@ -1271,19 +1348,21 @@ export default function GemMineMap() {
                 {legendOpen && (
                   <div style={{ padding: "5px 10px 7px" }}>
                     {[
-                      { key: "dig", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3L11 9.999"/><path d="M15.973 4.027A13 13 0 0 0 5.902 2.373c-1.398.342-1.092 2.158.277 2.601a19.9 19.9 0 0 1 5.822 3.024"/><path d="M16.001 11.999a19.9 19.9 0 0 1 3.024 5.824c.444 1.369 2.26 1.676 2.603.278A13 13 0 0 0 20 8.069"/><path d="M18.352 3.352a1.205 1.205 0 0 0-1.704 0l-5.296 5.296a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l5.296-5.296a1.205 1.205 0 0 0 0-1.704z"/></svg>, label: "Fee dig" },
-                      { key: "publicLand", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10 10 4 18h12L10 10z"/><path d="M14 6l2 4h-4l2-4z"/><line x1="10" y1="18" x2="10" y2="22"/></svg>, label: "Public land" },
-                      { key: "fossil", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/></svg>, label: "Fossil site" },
-                      { key: "shop", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>, label: "Shop/Workshop" },
-                    ].map(({ key, icon, label }) => (
+                      { key: "dig", leafletIcon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3L11 9.999"/><path d="M15.973 4.027A13 13 0 0 0 5.902 2.373c-1.398.342-1.092 2.158.277 2.601a19.9 19.9 0 0 1 5.822 3.024"/><path d="M16.001 11.999a19.9 19.9 0 0 1 3.024 5.824c.444 1.369 2.26 1.676 2.603.278A13 13 0 0 0 20 8.069"/><path d="M18.352 3.352a1.205 1.205 0 0 0-1.704 0l-5.296 5.296a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l5.296-5.296a1.205 1.205 0 0 0 0-1.704z"/></svg>, mlColor: "#3b82f6", mlBorder: "#1e3a8a", label: "Fee dig" },
+                      { key: "publicLand", leafletIcon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10 10 4 18h12L10 10z"/><path d="M14 6l2 4h-4l2-4z"/><line x1="10" y1="18" x2="10" y2="22"/></svg>, mlColor: "#10b981", mlBorder: "#065f46", label: "Public land" },
+                      { key: "fossil", leafletIcon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/></svg>, mlColor: "#8b5cf6", mlBorder: "#5b21b6", label: "Fossil site" },
+                      { key: "shop", leafletIcon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>, mlColor: "#f59e0b", mlBorder: "#92400e", label: "Shop/Workshop" },
+                    ].map(({ key, leafletIcon, mlColor, mlBorder, label }) => (
                       <div key={key} onClick={() => setTypeFilters(f => ({ ...f, [key]: !f[key] }))}
                         style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "3px", cursor: "pointer", opacity: typeFilters[key] ? 1 : 0.35, userSelect: "none" }}>
-                        {icon}
+                        {useMapLibre
+                          ? <div style={{ width: 12, height: 12, borderRadius: "50%", background: mlColor, border: "2px solid " + mlBorder, flexShrink: 0 }} />
+                          : leafletIcon}
                         <span style={{ textDecoration: typeFilters[key] ? "none" : "line-through" }}>{label}</span>
                       </div>
                     ))}
                     <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "1px" }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
+                      <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#6b7280", border: "2px solid #374151", flexShrink: 0 }} />
                       <span>Visited</span>
                     </div>
                   </div>
