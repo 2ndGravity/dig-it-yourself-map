@@ -967,7 +967,7 @@ export default function GemMineMap() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showViews, setShowViews] = useState(false);
-  const [useMapLibre, setUseMapLibre] = useState(false);
+  const [useMapLibre, setUseMapLibre] = useState(true);
   const [tripMode, setTripMode] = useState(false);
   const [tripSites, setTripSites] = useState([]);
   const tripModeRef = useRef(false);
