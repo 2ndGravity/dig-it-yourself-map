@@ -868,49 +868,86 @@ function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
       map.addControl(new ml.AttributionControl({ compact: true }));
       mlMapRef.current = map;
 
-      map.on("load", async () => {
+      map.on("load", () => {
 
-        // ── SVG icon rasterizer ────────────────────────────────────────────
-        const svgToMapImage = (svgStr, size = 28) => new Promise(resolve => {
-          const img = new Image();
-          const blob = new Blob([svgStr], { type: "image/svg+xml" });
-          const url = URL.createObjectURL(blob);
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = size; canvas.height = size;
-            canvas.getContext("2d").drawImage(img, 0, 0, size, size);
-            URL.revokeObjectURL(url);
-            resolve(canvas);
-          };
-          img.src = url;
-        });
-
-        // ── Icon SVG definitions (same paths as Leaflet markers) ──────────
-        const ic = (bg, border, paths) => `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-          <circle cx="14" cy="14" r="12" fill="${bg}" stroke="${border}" stroke-width="2.5"/>
-          <g transform="translate(7,7)" fill="none" stroke="${border}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            ${paths}
-          </g>
-        </svg>`;
-
-        const PICKAXE = `<path d="m8 7-5 5 1 1 4-4"/><path d="M9 2A7 7 0 0 0 3 5c-.8.2-.6 1.2.2 1.4a11 11 0 0 1 3.1 1.6"/><path d="M9 6a11 11 0 0 1 1.6 3.1c.2.8 1.2 1 1.4.2A7 7 0 0 0 13 4"/><path d="M10 2a.7.7 0 0 0-1 0L6 5a.7.7 0 0 0 0 1l1.3 1.3a.7.7 0 0 0 1 0L11.3 4a.7.7 0 0 0 0-1z"/>`;
-        const BONE    = `<path d="M9 5c.4-.4 1 0 1.4 0a1.4 1.4 0 1 0 0-2.8c0-.3-.3-1-.5-1A1.4 1.4 0 1 0 7 4c0 .5.4 1 0 1.4l-4 4c-.4.4-1 0-1.4 0a1.4 1.4 0 1 0 0 2.8c.3 0 1 .3 1 .5a1.4 1.4 0 1 0 2.8-3c.5 0 1-.4 1.4 0Z"/>`;
-        const BAG     = `<path d="M2 1 0 3v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V3L8 1zM0 3h10M7 5a3 3 0 0 1-4 0"/>`;
-        const TREES   = `<path d="M5 5 1 10h8L5 5z"/><path d="M7 3l1 2H6l1-2z"/><line x1="5" y1="10" x2="5" y2="13"/>`;
-        const CHECK   = `<polyline points="11 3 5 9 2 6" stroke="white"/>`;
-
-        const icons = {
-          "icon-dig":     ic("#ffffff", "#4b5563", PICKAXE),
-          "icon-fossil":  ic("#ffffff", "#4b5563", BONE),
-          "icon-shop":    ic("#ffffff", "#4b5563", BAG),
-          "icon-public":  ic("#e5e7eb", "#9ca3af", TREES),
-          "icon-visited": ic("#6b7280", "#374151", CHECK),
+        // Draw icons directly on canvas using Canvas 2D API
+        // No SVG parsing, no blob URLs -- works everywhere
+        const makeMarkerCanvas = (bg, border, drawFn) => {
+          const size = 28;
+          const c = document.createElement("canvas");
+          c.width = size; c.height = size;
+          const ctx = c.getContext("2d");
+          // Circle background
+          ctx.beginPath();
+          ctx.arc(14, 14, 11, 0, Math.PI * 2);
+          ctx.fillStyle = bg;
+          ctx.fill();
+          ctx.strokeStyle = border;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          // Icon
+          ctx.save();
+          ctx.strokeStyle = border;
+          ctx.lineWidth = 1.6;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.fillStyle = "none";
+          ctx.translate(14, 14); // center
+          drawFn(ctx);
+          ctx.restore();
+          return c;
         };
 
-        await Promise.all(Object.entries(icons).map(async ([name, svg]) => {
-          const canvas = await svgToMapImage(svg);
+        const icons = {
+          "icon-dig": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
+            // Pickaxe - simplified diagonal cross tool
+            ctx.beginPath(); ctx.moveTo(-5, 5); ctx.lineTo(5, -5); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-2, -5); ctx.lineTo(-6, -1); ctx.lineTo(-5, 0); ctx.lineTo(-1, -4); ctx.closePath(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(2, 5); ctx.lineTo(6, 1); ctx.lineTo(5, 0); ctx.lineTo(1, 4); ctx.closePath(); ctx.stroke();
+          }),
+          "icon-fossil": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
+            // Bone shape
+            ctx.beginPath();
+            ctx.moveTo(-5, 2); ctx.lineTo(3, -6);
+            ctx.stroke();
+            // End knobs
+            [[- 5, 2], [3, -6]].forEach(([x, y]) => {
+              ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.stroke();
+            });
+            [[-2, 5], [6, -3]].forEach(([x, y]) => {
+              ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.stroke();
+            });
+            ctx.beginPath(); ctx.moveTo(-3, 4); ctx.lineTo(5, -4); ctx.stroke();
+          }),
+          "icon-shop": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
+            // Shopping bag
+            ctx.beginPath();
+            ctx.rect(-5, -3, 10, 8);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(-5, -3); ctx.lineTo(-3, -6); ctx.lineTo(3, -6); ctx.lineTo(5, -3);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, -4, 2, 0, Math.PI);
+            ctx.stroke();
+          }),
+          "icon-public": makeMarkerCanvas("#e5e7eb", "#9ca3af", ctx => {
+            // Trees
+            ctx.beginPath(); ctx.moveTo(-5, 4); ctx.lineTo(0, -4); ctx.lineTo(5, 4); ctx.closePath(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-3, 1); ctx.lineTo(0, -5); ctx.lineTo(3, 1); ctx.closePath(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(0, 6); ctx.stroke();
+          }),
+          "icon-visited": makeMarkerCanvas("#6b7280", "#374151", ctx => {
+            // Checkmark
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-1, 4); ctx.lineTo(5, -4); ctx.stroke();
+          }),
+        };
+
+        Object.entries(icons).forEach(([name, canvas]) => {
           if (!map.hasImage(name)) map.addImage(name, canvas, { pixelRatio: 2 });
-        }));
+        });
 
         // ── GeoJSON source ────────────────────────────────────────────────
         map.addSource("mines", {
@@ -919,7 +956,7 @@ function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
           cluster: false,
         });
 
-        // ── Symbol layers (one per type, ordered so visited is on top) ────
+        // ── Symbol layers ─────────────────────────────────────────────────
         const addSymbolLayer = (id, filter, iconImage) => {
           map.addLayer({
             id, type: "symbol", source: "mines", filter,
