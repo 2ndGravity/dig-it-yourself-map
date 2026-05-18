@@ -868,37 +868,77 @@ function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
       map.addControl(new ml.AttributionControl({ compact: true }));
       mlMapRef.current = map;
 
-      map.on("load", () => {
-        // Add GeoJSON source for markers
+      map.on("load", async () => {
+
+        // ── SVG icon rasterizer ────────────────────────────────────────────
+        const svgToMapImage = (svgStr, size = 28) => new Promise(resolve => {
+          const img = new Image();
+          const blob = new Blob([svgStr], { type: "image/svg+xml" });
+          const url = URL.createObjectURL(blob);
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = size; canvas.height = size;
+            canvas.getContext("2d").drawImage(img, 0, 0, size, size);
+            URL.revokeObjectURL(url);
+            resolve(canvas);
+          };
+          img.src = url;
+        });
+
+        // ── Icon SVG definitions (same paths as Leaflet markers) ──────────
+        const ic = (bg, border, paths) => `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+          <circle cx="14" cy="14" r="12" fill="${bg}" stroke="${border}" stroke-width="2.5"/>
+          <g transform="translate(7,7)" fill="none" stroke="${border}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            ${paths}
+          </g>
+        </svg>`;
+
+        const PICKAXE = `<path d="m8 7-5 5 1 1 4-4"/><path d="M9 2A7 7 0 0 0 3 5c-.8.2-.6 1.2.2 1.4a11 11 0 0 1 3.1 1.6"/><path d="M9 6a11 11 0 0 1 1.6 3.1c.2.8 1.2 1 1.4.2A7 7 0 0 0 13 4"/><path d="M10 2a.7.7 0 0 0-1 0L6 5a.7.7 0 0 0 0 1l1.3 1.3a.7.7 0 0 0 1 0L11.3 4a.7.7 0 0 0 0-1z"/>`;
+        const BONE    = `<path d="M9 5c.4-.4 1 0 1.4 0a1.4 1.4 0 1 0 0-2.8c0-.3-.3-1-.5-1A1.4 1.4 0 1 0 7 4c0 .5.4 1 0 1.4l-4 4c-.4.4-1 0-1.4 0a1.4 1.4 0 1 0 0 2.8c.3 0 1 .3 1 .5a1.4 1.4 0 1 0 2.8-3c.5 0 1-.4 1.4 0Z"/>`;
+        const BAG     = `<path d="M2 1 0 3v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V3L8 1zM0 3h10M7 5a3 3 0 0 1-4 0"/>`;
+        const TREES   = `<path d="M5 5 1 10h8L5 5z"/><path d="M7 3l1 2H6l1-2z"/><line x1="5" y1="10" x2="5" y2="13"/>`;
+        const CHECK   = `<polyline points="11 3 5 9 2 6" stroke="white"/>`;
+
+        const icons = {
+          "icon-dig":     ic("#ffffff", "#4b5563", PICKAXE),
+          "icon-fossil":  ic("#ffffff", "#4b5563", BONE),
+          "icon-shop":    ic("#ffffff", "#4b5563", BAG),
+          "icon-public":  ic("#e5e7eb", "#9ca3af", TREES),
+          "icon-visited": ic("#6b7280", "#374151", CHECK),
+        };
+
+        await Promise.all(Object.entries(icons).map(async ([name, svg]) => {
+          const canvas = await svgToMapImage(svg);
+          if (!map.hasImage(name)) map.addImage(name, canvas, { pixelRatio: 2 });
+        }));
+
+        // ── GeoJSON source ────────────────────────────────────────────────
         map.addSource("mines", {
           type: "geojson",
           data: buildGeoJSON(mines, visitedRef.current),
           cluster: false,
         });
 
-        // All markers: white fill, border color indicates type
-        map.addLayer({ id: "mines-visited", type: "circle", source: "mines",
-          filter: ["==", ["get", "isVisited"], true],
-          paint: { "circle-color": "#6b7280", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#374151" }
-        });
-        map.addLayer({ id: "mines-shop", type: "circle", source: "mines",
-          filter: ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], true]],
-          paint: { "circle-color": "#ffffff", "circle-radius": 6, "circle-stroke-width": 3, "circle-stroke-color": "#4b5563" }
-        });
-        map.addLayer({ id: "mines-fossil", type: "circle", source: "mines",
-          filter: ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isFossil"], true]],
-          paint: { "circle-color": "#ffffff", "circle-radius": 5, "circle-stroke-width": 2, "circle-stroke-color": "#4b5563" }
-        });
-        map.addLayer({ id: "mines-public", type: "circle", source: "mines",
-          filter: ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], true]],
-          paint: { "circle-color": "#e5e7eb", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#9ca3af" }
-        });
-        map.addLayer({ id: "mines-default", type: "circle", source: "mines",
-          filter: ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], false]],
-          paint: { "circle-color": "#ffffff", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#4b5563" }
-        });
+        // ── Symbol layers (one per type, ordered so visited is on top) ────
+        const addSymbolLayer = (id, filter, iconImage) => {
+          map.addLayer({
+            id, type: "symbol", source: "mines", filter,
+            layout: {
+              "icon-image": iconImage,
+              "icon-size": 1,
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+            }
+          });
+        };
 
-        // Click handlers
+        addSymbolLayer("mines-default", ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], false]], "icon-dig");
+        addSymbolLayer("mines-public",  ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], true]],  "icon-public");
+        addSymbolLayer("mines-fossil",  ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isFossil"], true]],  "icon-fossil");
+        addSymbolLayer("mines-shop",    ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], true]],    "icon-shop");
+        addSymbolLayer("mines-visited", ["==", ["get", "isVisited"], true], "icon-visited");
+
+        // ── Click + cursor handlers ───────────────────────────────────────
         ["mines-visited","mines-shop","mines-public","mines-fossil","mines-default"].forEach(layer => {
           map.on("click", layer, e => {
             const id = e.features[0].properties.id;
@@ -907,15 +947,6 @@ function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
           });
           map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
           map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
-        });
-
-        map.on("click", "clusters", e => {
-          const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
-          const clusterId = features[0].properties.cluster_id;
-          map.getSource("mines").getClusterExpansionZoom(clusterId, (err, zoom) => {
-            if (err) return;
-            map.easeTo({ center: features[0].geometry.coordinates, zoom });
-          });
         });
       });
     });
