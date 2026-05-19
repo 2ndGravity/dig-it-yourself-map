@@ -869,6 +869,68 @@ function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
 
       map.on("load", () => {
 
+        // ── Build canvas icons (circle + icon drawn together) ─────────────
+        const makeMarkerCanvas = (bg, border, drawFn) => {
+          const c = document.createElement("canvas");
+          c.width = 28; c.height = 28;
+          const ctx = c.getContext("2d");
+          // Drop shadow
+          ctx.shadowColor = "rgba(0,0,0,0.25)";
+          ctx.shadowBlur = 3;
+          ctx.shadowOffsetY = 1;
+          // Circle fill
+          ctx.beginPath(); ctx.arc(14, 14, 11, 0, Math.PI * 2);
+          ctx.fillStyle = bg; ctx.fill();
+          // Circle border
+          ctx.shadowColor = "transparent";
+          ctx.strokeStyle = border; ctx.lineWidth = 2; ctx.stroke();
+          // Icon centered
+          ctx.save();
+          ctx.strokeStyle = border; ctx.lineWidth = 1.6;
+          ctx.lineCap = "round"; ctx.lineJoin = "round";
+          ctx.translate(14, 14);
+          drawFn(ctx);
+          ctx.restore();
+          return c;
+        };
+
+        const canvasIcons = {
+          "ml-dig": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
+            // Pickaxe
+            ctx.beginPath(); ctx.moveTo(-4, 4); ctx.lineTo(4, -4); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-1, -4); ctx.lineTo(0, -3); ctx.lineTo(-4, 1); ctx.closePath(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(1, 4); ctx.lineTo(0, 3); ctx.lineTo(4, -1); ctx.closePath(); ctx.stroke();
+          }),
+          "ml-fossil": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
+            // Bone
+            [[-4,4],[4,-4]].forEach(([x,y]) => { ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.stroke(); });
+            [[2,-2],[-2,2]].forEach(([x,y]) => { ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.stroke(); });
+            ctx.beginPath(); ctx.moveTo(-3,3); ctx.lineTo(3,-3); ctx.stroke();
+          }),
+          "ml-shop": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
+            // Bag
+            ctx.beginPath(); ctx.rect(-4,-2,8,6); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-4,-2); ctx.lineTo(-2,-5); ctx.lineTo(2,-5); ctx.lineTo(4,-2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0,-3.5,1.5,0,Math.PI); ctx.stroke();
+          }),
+          "ml-public": makeMarkerCanvas("#e5e7eb", "#9ca3af", ctx => {
+            // Trees
+            ctx.strokeStyle = "#9ca3af";
+            ctx.beginPath(); ctx.moveTo(-4,4); ctx.lineTo(0,-3); ctx.lineTo(4,4); ctx.closePath(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(0,6); ctx.stroke();
+          }),
+          "ml-visited": makeMarkerCanvas("#6b7280", "#374151", ctx => {
+            // Check
+            ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(-1,4); ctx.lineTo(5,-4); ctx.stroke();
+          }),
+        };
+
+        // Add images and build symbol layers
+        Object.entries(canvasIcons).forEach(([name, canvas]) => {
+          if (!map.hasImage(name)) map.addImage(name, canvas, { pixelRatio: 2 });
+        });
+
         // ── GeoJSON source ────────────────────────────────────────────────
         map.addSource("mines", {
           type: "geojson",
@@ -876,85 +938,17 @@ function MapLibreComponent({ mines, visited, onMineClick, zoomState, region }) {
           cluster: false,
         });
 
-        // ── Circle layers (always work, reliable base) ────────────────────
-        map.addLayer({ id: "mines-default", type: "circle", source: "mines",
-          filter: ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], false]],
-          paint: { "circle-color": "#ffffff", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#4b5563" }
-        });
-        map.addLayer({ id: "mines-public", type: "circle", source: "mines",
-          filter: ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], true]],
-          paint: { "circle-color": "#e5e7eb", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#9ca3af" }
-        });
-        map.addLayer({ id: "mines-fossil", type: "circle", source: "mines",
-          filter: ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isFossil"], true]],
-          paint: { "circle-color": "#ffffff", "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#4b5563" }
-        });
-        map.addLayer({ id: "mines-shop", type: "circle", source: "mines",
-          filter: ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], true]],
-          paint: { "circle-color": "#ffffff", "circle-radius": 7, "circle-stroke-width": 3, "circle-stroke-color": "#4b5563" }
-        });
-        map.addLayer({ id: "mines-visited", type: "circle", source: "mines",
-          filter: ["==", ["get", "isVisited"], true],
-          paint: { "circle-color": "#6b7280", "circle-radius": 7, "circle-stroke-width": 2, "circle-stroke-color": "#374151" }
+        // ── Symbol layers only (icon includes circle background) ──────────
+        const addLayer = (id, filter, icon) => map.addLayer({
+          id, type: "symbol", source: "mines", filter,
+          layout: { "icon-image": icon, "icon-size": 1, "icon-allow-overlap": true, "icon-ignore-placement": true }
         });
 
-        // ── Try to add canvas icons on top of circles ─────────────────────
-        try {
-          const makeMarkerCanvas = (bg, border, drawFn) => {
-            const c = document.createElement("canvas");
-            c.width = 28; c.height = 28;
-            const ctx = c.getContext("2d");
-            ctx.beginPath(); ctx.arc(14, 14, 11, 0, Math.PI * 2);
-            ctx.fillStyle = bg; ctx.fill();
-            ctx.strokeStyle = border; ctx.lineWidth = 2.5; ctx.stroke();
-            ctx.save(); ctx.strokeStyle = border; ctx.lineWidth = 1.6;
-            ctx.lineCap = "round"; ctx.lineJoin = "round";
-            ctx.translate(14, 14); drawFn(ctx); ctx.restore();
-            return c;
-          };
-
-          const canvasIcons = {
-            "ml-dig": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
-              ctx.beginPath(); ctx.moveTo(-5, 5); ctx.lineTo(5, -5); ctx.stroke();
-              ctx.beginPath(); ctx.moveTo(-6, -1); ctx.lineTo(-2, -5); ctx.lineTo(-1, -4); ctx.lineTo(-5, 0); ctx.closePath(); ctx.stroke();
-              ctx.beginPath(); ctx.moveTo(6, 1); ctx.lineTo(2, 5); ctx.lineTo(1, 4); ctx.lineTo(5, 0); ctx.closePath(); ctx.stroke();
-            }),
-            "ml-fossil": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
-              [[-4,4],[4,-4]].forEach(([x,y]) => { ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.stroke(); });
-              [[-1,1],[1,-1]].forEach(([x,y]) => { ctx.beginPath(); ctx.arc(x+3,y-3,2,0,Math.PI*2); ctx.stroke(); });
-              ctx.beginPath(); ctx.moveTo(-2,3); ctx.lineTo(2,-3); ctx.stroke();
-            }),
-            "ml-shop": makeMarkerCanvas("#ffffff", "#4b5563", ctx => {
-              ctx.beginPath(); ctx.rect(-5,-2,10,7); ctx.stroke();
-              ctx.beginPath(); ctx.moveTo(-5,-2); ctx.lineTo(-3,-6); ctx.lineTo(3,-6); ctx.lineTo(5,-2); ctx.stroke();
-              ctx.beginPath(); ctx.arc(0,-4,2,0,Math.PI); ctx.stroke();
-            }),
-            "ml-public": makeMarkerCanvas("#e5e7eb", "#9ca3af", ctx => {
-              ctx.beginPath(); ctx.moveTo(-5,4); ctx.lineTo(0,-4); ctx.lineTo(5,4); ctx.closePath(); ctx.stroke();
-              ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(0,7); ctx.stroke();
-            }),
-            "ml-visited": makeMarkerCanvas("#6b7280", "#374151", ctx => {
-              ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
-              ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(-1,4); ctx.lineTo(5,-4); ctx.stroke();
-            }),
-          };
-
-          Object.entries(canvasIcons).forEach(([name, canvas]) => {
-            if (!map.hasImage(name)) map.addImage(name, canvas, { pixelRatio: 2 });
-          });
-
-          const iconMap = { "mines-default":"ml-dig","mines-public":"ml-public","mines-fossil":"ml-fossil","mines-shop":"ml-shop","mines-visited":"ml-visited" };
-          Object.entries(iconMap).forEach(([layerId, iconName]) => {
-            const filter = map.getLayer(layerId).filter || ["literal", true];
-            map.addLayer({ id: layerId+"-icon", type: "symbol", source: "mines",
-              filter: map.getFilter(layerId),
-              layout: { "icon-image": iconName, "icon-size": 1, "icon-allow-overlap": true, "icon-ignore-placement": true }
-            });
-          });
-        } catch(e) {
-          // Icons failed -- circles still showing, that's fine
-          console.warn("MapLibre icon overlay failed, using circles:", e);
-        }
+        addLayer("mines-default", ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], false]], "ml-dig");
+        addLayer("mines-public",  ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], false], ["==", ["get", "isFossil"], false], ["==", ["get", "isPublic"], true]],  "ml-public");
+        addLayer("mines-fossil",  ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isFossil"], true]],  "ml-fossil");
+        addLayer("mines-shop",    ["all", ["==", ["get", "isVisited"], false], ["==", ["get", "isShop"], true]],    "ml-shop");
+        addLayer("mines-visited", ["==", ["get", "isVisited"], true], "ml-visited");
 
         // ── Click + cursor handlers ───────────────────────────────────────
         ["mines-visited","mines-shop","mines-public","mines-fossil","mines-default"].forEach(layer => {
@@ -1386,19 +1380,23 @@ export default function GemMineMap() {
                 {legendOpen && (
                   <div style={{ padding: "5px 10px 7px" }}>
                     {[
-                      { key: "dig",       icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3L11 9.999"/><path d="M15.973 4.027A13 13 0 0 0 5.902 2.373c-1.398.342-1.092 2.158.277 2.601a19.9 19.9 0 0 1 5.822 3.024"/><path d="M16.001 11.999a19.9 19.9 0 0 1 3.024 5.824c.444 1.369 2.26 1.676 2.603.278A13 13 0 0 0 20 8.069"/><path d="M18.352 3.352a1.205 1.205 0 0 0-1.704 0l-5.296 5.296a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l5.296-5.296a1.205 1.205 0 0 0 0-1.704z"/></svg>, label: "Fee dig" },
-                      { key: "publicLand", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10 10 4 18h12L10 10z"/><path d="M14 6l2 4h-4l2-4z"/><line x1="10" y1="18" x2="10" y2="22"/></svg>, label: "Public land" },
-                      { key: "fossil",    icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/></svg>, label: "Fossil site" },
-                      { key: "shop",      icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>, label: "Shop/Workshop" },
-                    ].map(({ key, icon, label }) => (
+                      { key: "dig",        icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3L11 9.999"/><path d="M15.973 4.027A13 13 0 0 0 5.902 2.373c-1.398.342-1.092 2.158.277 2.601a19.9 19.9 0 0 1 5.822 3.024"/><path d="M16.001 11.999a19.9 19.9 0 0 1 3.024 5.824c.444 1.369 2.26 1.676 2.603.278A13 13 0 0 0 20 8.069"/><path d="M18.352 3.352a1.205 1.205 0 0 0-1.704 0l-5.296 5.296a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l5.296-5.296a1.205 1.205 0 0 0 0-1.704z"/></svg>, bg: "#ffffff", border: "#4b5563", label: "Fee dig" },
+                      { key: "publicLand", icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 10 4 18h12L10 10z"/><path d="M14 6l2 4h-4l2-4z"/><line x1="10" y1="18" x2="10" y2="22"/></svg>, bg: "#e5e7eb", border: "#9ca3af", label: "Public land" },
+                      { key: "fossil",     icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/></svg>, bg: "#ffffff", border: "#4b5563", label: "Fossil site" },
+                      { key: "shop",       icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>, bg: "#ffffff", border: "#4b5563", label: "Shop/Workshop" },
+                    ].map(({ key, icon, bg, border, label }) => (
                       <div key={key} onClick={() => setTypeFilters(f => ({ ...f, [key]: !f[key] }))}
                         style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "3px", cursor: "pointer", opacity: typeFilters[key] ? 1 : 0.35, userSelect: "none" }}>
-                        {icon}
+                        <div style={{ width: 18, height: 18, borderRadius: "50%", background: bg, border: "1.5px solid " + border, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>
+                          {icon}
+                        </div>
                         <span style={{ textDecoration: typeFilters[key] ? "none" : "line-through" }}>{label}</span>
                       </div>
                     ))}
                     <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "1px" }}>
-                      <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#6b7280", border: "2px solid #374151", flexShrink: 0 }} />
+                      <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#6b7280", border: "1.5px solid #374151", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
                       <span>Visited</span>
                     </div>
                   </div>
